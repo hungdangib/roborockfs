@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+roborock.db
+local_session.json
+.DS_Store

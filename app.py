@@ -94,7 +94,13 @@ def upload_page():
             uploaded_file.seek(0)
             
             if header == b'PK\x03\x04' or uploaded_file.name.endswith(('.xlsx', '.xls')):
-                df = pd.read_excel(uploaded_file)
+                try:
+                    if uploaded_file.name.endswith('.xls'):
+                        df = pd.read_excel(uploaded_file, engine='xlrd')
+                    else:
+                        df = pd.read_excel(uploaded_file, engine='openpyxl')
+                except Exception as e:
+                    df = pd.read_excel(uploaded_file)
             else:
                 try:
                     df = pd.read_csv(uploaded_file, encoding='utf-8', sep=None, engine='python', on_bad_lines='skip')
