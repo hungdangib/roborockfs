@@ -86,53 +86,72 @@ def upload_page():
     st.header("Upload Dữ liệu Khách hàng")
     st.write("Tải lên file dữ liệu (CSV hoặc Excel) chứa thông tin khách hàng mua sản phẩm Roborock.")
     
-    uploaded_file = st.file_uploader("Chọn file CSV hoặc Excel", type=['csv', 'xlsx', 'xls'])
+    st.markdown("### Thiết lập bộ lọc Sản phẩm")
     
-    if uploaded_file is not None:
+    # Load cấu hình cũ nếu có
+    config_file = 'config.json'
+    default_include = "Qrevo, S8, S7, Robot, Dyad, Flexi"
+    default_exclude = "phụ kiện, nước lau, chổi, giẻ, rác, dock"
+    
+    if os.path.exists(config_file):
         try:
-            header = uploaded_file.read(4)
-            uploaded_file.seek(0)
+            with open(config_file, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                default_include = config.get('include', default_include)
+                default_exclude = config.get('exclude', default_exclude)
+        except:
+            pass
             
-            if header == b'PK\x03\x04' or uploaded_file.name.endswith(('.xlsx', '.xls')):
-                try:
-                    if uploaded_file.name.endswith('.xls'):
-                        df = pd.read_excel(uploaded_file, engine='xlrd')
-                    else:
-                        df = pd.read_excel(uploaded_file, engine='openpyxl')
-                except Exception as e:
-                    df = pd.read_excel(uploaded_file)
-            else:
-                try:
-                    df = pd.read_csv(uploaded_file, encoding='utf-8', sep=None, engine='python', on_bad_lines='skip')
-                except UnicodeDecodeError:
-                    uploaded_file.seek(0)
+    include_keywords_input = st.text_input("Tên khớp sản phẩm (ngăn cách bằng dấu phẩy, để trống nếu lấy tất cả):", default_include)
+    exclude_keywords_input = st.text_input("Từ khóa bị loại trừ (ngăn cách bằng dấu phẩy):", default_exclude)
+    
+    st.markdown("---")
+    
+    uploaded_files = st.file_uploader("Vui lòng chọn một hoặc nhiều file CSV/Excel", type=['csv', 'xlsx', 'xls'], accept_multiple_files=True, key="multi_file_uploader")
+    
+    if uploaded_files:
+        try:
+            dfs = []
+            for uploaded_file in uploaded_files:
+                df_temp = None
+                header = uploaded_file.read(4)
+                uploaded_file.seek(0)
+                
+                if header == b'PK\x03\x04' or uploaded_file.name.endswith(('.xlsx', '.xls')):
                     try:
-                        df = pd.read_csv(uploaded_file, encoding='cp1252', sep=None, engine='python', on_bad_lines='skip')
+                        if uploaded_file.name.endswith('.xls'):
+                            df_temp = pd.read_excel(uploaded_file, engine='xlrd')
+                        else:
+                            df_temp = pd.read_excel(uploaded_file, engine='openpyxl')
+                    except Exception as e:
+                        df_temp = pd.read_excel(uploaded_file)
+                else:
+                    try:
+                        df_temp = pd.read_csv(uploaded_file, encoding='utf-8', sep=None, engine='python', on_bad_lines='skip')
                     except UnicodeDecodeError:
                         uploaded_file.seek(0)
-                        df = pd.read_csv(uploaded_file, encoding='latin1', sep=None, engine='python', on_bad_lines='skip')
-            st.success("Đọc file thành công!")
+                        try:
+                            df_temp = pd.read_csv(uploaded_file, encoding='cp1252', sep=None, engine='python', on_bad_lines='skip')
+                        except UnicodeDecodeError:
+                            uploaded_file.seek(0)
+                            try:
+                                df_temp = pd.read_csv(uploaded_file, encoding='latin1', sep=None, engine='python', on_bad_lines='skip')
+                            except Exception as e:
+                                st.error(f"Không thể đọc file {uploaded_file.name} do lỗi định dạng hoặc encoding.")
+                                continue
+                
+                if df_temp is not None and not df_temp.empty:
+                    dfs.append(df_temp)
+                
+            if not dfs:
+                st.warning("Không có dữ liệu hợp lệ nào được tải lên.")
+                return
+                
+            df = pd.concat(dfs, ignore_index=True)
+            st.success(f"Đọc thành công {len(uploaded_files)} file!")
             st.dataframe(df)
             
             st.markdown("---")
-            st.markdown("### Thiết lập bộ lọc Sản phẩm")
-            
-            # Load cấu hình cũ nếu có
-            config_file = 'config.json'
-            default_include = "Qrevo, S8, S7, Robot, Dyad, Flexi"
-            default_exclude = "phụ kiện, nước lau, chổi, giẻ, rác, dock"
-            
-            if os.path.exists(config_file):
-                try:
-                    with open(config_file, 'r', encoding='utf-8') as f:
-                        config = json.load(f)
-                        default_include = config.get('include', default_include)
-                        default_exclude = config.get('exclude', default_exclude)
-                except:
-                    pass
-            
-            include_keywords_input = st.text_input("Tên khớp sản phẩm (ngăn cách bằng dấu phẩy, để trống nếu lấy tất cả):", default_include)
-            exclude_keywords_input = st.text_input("Từ khóa bị loại trừ (ngăn cách bằng dấu phẩy):", default_exclude)
             
             if st.button("Xử lý dữ liệu"):
                 # Lưu lại cấu hình mới
