@@ -165,7 +165,7 @@ def upload_page():
                     
                     code_col = next((c for c in cols if 'imei' in c.lower() or 'serial' in c.lower() or 'sêri' in c.lower()), None)
                     
-                    if not all([date_col, addr_col, prod_col, phone_col, name_col]):
+                    if not all([date_col, prod_col, phone_col, name_col]):
                         st.error("Không tìm thấy đủ các cột yêu cầu trong file CSV. Vui lòng kiểm tra lại cấu trúc.")
                         st.write(f"Tìm thấy: Ngày ({date_col}), Địa chỉ ({addr_col}), SP ({prod_col}), Giá ({price_col}), ĐT ({phone_col}), Tên ({name_col})")
                         return
@@ -200,14 +200,16 @@ def upload_page():
                                 if not is_included:
                                     continue
                                 
-                            # Làm sạch giá tiền để lưu vào DB (không lọc theo giá nữa)
-                            price_str = str(row[price_col]).replace(',', '').replace('.', '').replace('₫', '').replace('VND', '').strip()
-                            try:
-                                price = float(price_str)
-                            except ValueError:
-                                price = 0.0
+                            # Làm sạch giá tiền để lưu vào DB
+                            price = 0.0
+                            if price_col and price_col in row and not pd.isna(row[price_col]):
+                                price_str = str(row[price_col]).replace(',', '').replace('.', '').replace('₫', '').replace('VND', '').strip()
+                                try:
+                                    price = float(price_str)
+                                except ValueError:
+                                    pass
                                 
-                            address = str(row[addr_col])
+                            address = str(row[addr_col]) if addr_col and addr_col in row else "Không có"
                             
                             # Chuyển đổi định dạng ngày nếu cần (Giả định dd/mm/yyyy -> yyyy-mm-dd)
                             raw_date = str(row[date_col])
