@@ -230,10 +230,10 @@ def upload_page():
                                 
                             address = str(row[addr_col]) if addr_col and addr_col in row else "Không có"
                             
-                            # Chuyển đổi định dạng ngày nếu cần (Giả định dd/mm/yyyy -> yyyy-mm-dd)
-                            raw_date = str(row[date_col])
+                            # Chuyển đổi định dạng ngày nếu cần (Giả định dd-mm-yyyy -> yyyy-mm-dd)
+                            raw_date = str(row[date_col]).strip()
                             try:
-                                parsed_date = pd.to_datetime(raw_date).strftime('%Y-%m-%d')
+                                parsed_date = pd.to_datetime(raw_date, dayfirst=True).strftime('%Y-%m-%d')
                             except:
                                 parsed_date = datetime.today().strftime('%Y-%m-%d') # Fallback
                             
